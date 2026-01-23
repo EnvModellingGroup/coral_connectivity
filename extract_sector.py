@@ -12,7 +12,7 @@ sectors = ["Cape_Grenville", "Princess_Charlotte_B", "Cook_Town",
 
 reefs_in_sector_gdf = polygons_gdf[polygons_gdf['SECTOR'] == sector_to_extract]
 
-connectivity_matrix = pd.read_csv(decimal_matrix)
+connectivity_matrix = pd.read_csv(decimal_matrix,index_col=0)
 
 reef_names = reefs_in_sector_gdf["LOC_NAME_S"].to_list()
 valid_names = [name for name in reef_names if name in connectivity_matrix.index and name in connectivity_matrix.columns]
