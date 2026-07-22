@@ -8,6 +8,7 @@ import numpy as np
 #################################
 
 # Define locations for corresponding adjacency matrix filenames
+# NOTE GBR NEEDS altering for each resolution. Then run the network stats, vis and robustness scripts
 locations = {
     "GBR": os.path.join("../../modern_2km", "gbr_connectivity_decimal_G.retiformis.csv"),
     "IO": os.path.join("../data/", "IO_single_step_explicit_mean_connectivity_matrix.csv"),

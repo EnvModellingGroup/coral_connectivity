@@ -88,3 +88,7 @@ if __name__ == "__main__":
     OUTPUT_SHAPEFILE = "GBR_names_reprojected_2km.shp"
     
     clump_reef_polygons(INPUT_SHAPEFILE, OUTPUT_SHAPEFILE, distance_threshold_meters=2000)
+    print("Add x and y locs"
+
+# To add x and y locs, use QGIs to generate centroids, then you can use the append fields tool to copy them across. 
+# You also need to add a LOC_NAME_S field which is a striong and can be the cluster_id (or other unique string).
