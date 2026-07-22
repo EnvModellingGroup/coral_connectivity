@@ -336,7 +336,7 @@ if __name__ == '__main__':
         
     plt.suptitle("Comparative Robustness Analysis (Normalized to Present Day)", fontsize=10)
     plt.tight_layout()
-    plt.savefig("all_regions_combined_robustness.pdf", dpi=72)
+    plt.savefig("all_regions_combined_robustness_2km.pdf", dpi=72)
     plt.close()
     
     print("Successfully saved unified plot: all_regions_combined_robustness.pdf")

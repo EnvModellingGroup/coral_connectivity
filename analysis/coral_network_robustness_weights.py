@@ -224,7 +224,7 @@ if __name__ == '__main__':
     # Track which metrics are network-wide for each region
     region_network_wide_metrics = {}
 
-    alpha_val = 1.5
+    alpha_val = 2.0
 
     for region, filename in locations.items():
         print(f"\n{'='*40}\nProcessing Robustness Data: {region}\n{'='*40}")
@@ -363,7 +363,7 @@ if __name__ == '__main__':
         
     plt.suptitle("Comparative Robustness Analysis (Normalized to Present Day)", fontsize=10)
     plt.tight_layout()
-    plt.savefig("all_regions_combined_robustness_weighted_alpha_"+str(alpha_val)+".pdf", dpi=72)
+    plt.savefig("all_regions_combined_robustness_weighted_alpha_"+str(alpha_val)+"_0.5km.pdf", dpi=72)
     plt.close()
     
     print("Successfully saved unified plot: all_regions_combined_robustness_weighted.pdf")

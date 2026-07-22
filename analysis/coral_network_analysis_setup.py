@@ -9,7 +9,7 @@ import numpy as np
 
 # Define locations for corresponding adjacency matrix filenames
 locations = {
-    "GBR": os.path.join("../data/", "gbr_connectivity_decimal_G_retiformas.csv"),
+    "GBR": os.path.join("../../modern_2km", "gbr_connectivity_decimal_G.retiformis.csv"),
     "IO": os.path.join("../data/", "IO_single_step_explicit_mean_connectivity_matrix.csv"),
     "Caribbean": os.path.join("../data", "Caribbean_matrix.csv"),
     }
