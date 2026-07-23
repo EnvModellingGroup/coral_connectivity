@@ -1,3 +1,6 @@
+# our venv
+venv-coral-connectivity/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

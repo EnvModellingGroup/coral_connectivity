@@ -1,0 +1,9 @@
+The main hydrodynamic model.
+
+Forcing is from TXPO and ERA5; you need to get these data
+
+Run the pre_processing.py to set up the bathy etc
+
+The run the main model. You can then run the continuation if you run out of time on the HPC
+
+Finally run the post processing to generate M2, etc if you wish
