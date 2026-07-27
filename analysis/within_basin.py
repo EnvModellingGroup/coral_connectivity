@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
+"""
+Calculates a few within-basin metrics on the networks
+
+@author: jhill1; https://github.com/jhill1
+"""
 #
 # This work is licensed under a Creative Commons Attribution 4.0 International License.
 #
-# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative
 # Commons, PO Box 1866, Mountain View, CA 94042, USA.
 #
 # Copyright University of York, 2026
@@ -12,12 +17,6 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from coral_network_analysis_setup import *
-
-"""
-Calculates a few within-basin metrics on the networks
-
-@author: jhill1; https://github.com/jhill1
-"""
 
 # --- Matplotlib Styling Settings ---
 matplotlib.style.use("seaborn-v0_8-ticks")
@@ -74,7 +73,7 @@ def analyze_basin_modularity(G, region_name, resolution=1.0, seed=42):
 
     # Convert to undirected representation with weighted edge aggregation for Louvain
     G_undirected = G.to_undirected(reciprocal=False)
-    
+
     # 1. Detect Communities using Louvain Algorithm
     try:
         communities = nx.community.louvain_communities(
@@ -180,13 +179,17 @@ if __name__ == "__main__":
 
     # Panel A: Modularity Score (Q) Comparison
     ax1 = axes[0]
-    bars1 = ax1.bar(regions, summary_df["modularity_Q"], color=colors, width=0.5, edgecolor="none", alpha=0.85)
+    bars1 = ax1.bar(regions, summary_df["modularity_Q"],
+                    color=colors, width=0.5,
+                    edgecolor="none", alpha=0.85)
     ax1.set_ylabel("Modularity Score ($Q$)")
     ax1.set_title("A. Basin Modularity ($Q$)", fontsize=8, fontweight="bold")
     ax1.set_ylim(0, max(summary_df["modularity_Q"]) * 1.25 if not summary_df.empty else 1.0)
     for bar in bars1:
         yval = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width()/2.0, yval + 0.01, f"{yval:.3f}", ha='center', va='bottom', fontsize=6)
+        ax1.text(bar.get_x() + bar.get_width()/2.0, yval + 0.01,
+                 f"{yval:.3f}", ha='center', va='bottom',
+                 fontsize=6)
 
     # Panel B: Number of Detected Sub-Communities
     ax2 = axes[1]
@@ -196,7 +199,9 @@ if __name__ == "__main__":
     ax2.set_ylim(0, max(summary_df["num_communities"]) * 1.25 if not summary_df.empty else 10)
     for bar in bars2:
         yval = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width()/2.0, yval + 0.5, f"{int(yval)}", ha='center', va='bottom', fontsize=6)
+        ax2.text(bar.get_x() + bar.get_width()/2.0, yval + 0.5,
+                 f"{int(yval)}", ha='center', va='bottom',
+                 fontsize=6)
 
     # Panel C: Rank-Size Distribution of Communities
     ax3 = axes[2]
@@ -220,7 +225,7 @@ if __name__ == "__main__":
     ax3.legend(loc="upper right", frameon=True, fontsize=6)
 
     plt.tight_layout()
-    
+
     output_plot_path = "within_basin_modularity_analysis.pdf"
     plt.savefig(output_plot_path, dpi=300)
     plt.close()

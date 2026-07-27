@@ -1,14 +1,3 @@
-# This work is licensed under a Creative Commons Attribution 4.0 International License.
-#
-# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
-# Commons, PO Box 1866, Mountain View, CA 94042, USA.
-#
-# Copyright University of York, Isaac Abbott, 2026
-import os
-import networkx as nx
-import pandas as pd
-import numpy as np
-
 """
 This script sets up variables and methods used in most of the
 other scripts.
@@ -19,6 +8,16 @@ carefully checking things
 @author: jhill1; https://github.com/jhill1
 @author: ia947; https://github.com/ia947
 """
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York, Isaac Abbott, 2026
+import os
+import networkx as nx
+import pandas as pd
+import numpy as np
 
 #################################
 ###### DATA PRE-PROCESSING ######
@@ -46,8 +45,7 @@ def read_adjacency_matrix(filename):
     """
     if filename.endswith(".csv"):
         return pd.read_csv(filename, index_col=0, header=0)
-    else:
-        raise ValueError(f"Unsupported file format: {filename}")
+    raise ValueError(f"Unsupported file format: {filename}")
 
 # Function to create directed graph from connectivity matrix
 def create_adjacency_matrix_graph(adjacency_matrix):
@@ -69,7 +67,7 @@ def create_adjacency_matrix_graph(adjacency_matrix):
 ###############################
 
 # Function to compute all network measures
-def compute_network_metrics(G, region_name):
+def compute_network_metrics(G):
     """
     Computes the network metrics and outputs a dataframe of the nodes. 
     For some metrics the same value will be at all nodes as they are
@@ -83,27 +81,28 @@ def compute_network_metrics(G, region_name):
     eigenvector_centrality = nx.eigenvector_centrality(G, max_iter=1000)
     harmonic_centrality = nx.harmonic_centrality(G)
     clustering_coefficient = nx.clustering(G.to_undirected())
-    
+
     # Graph-level measures
     density = nx.density(G)
-    
+
     G_no_selfloops = G.copy()  # Create copy of the graph
     G_no_selfloops.remove_edges_from(nx.selfloop_edges(G_no_selfloops))  # Remove self-loops
     if G_no_selfloops.number_of_edges() > 0:  # Ensure the graph has edges
-        rich_club_coefficient = nx.rich_club_coefficient(G_no_selfloops.to_undirected(), normalized=False)
+        rich_club_coefficient = nx.rich_club_coefficient(G_no_selfloops.to_undirected(),
+                                                         normalized=False)
         avg_rich_club = np.mean(list(rich_club_coefficient.values()))
     else:
         avg_rich_club = 0  # If no valid calculation, default to 0
-    
+
     transitivity = nx.transitivity(G)
     local_efficiency = nx.local_efficiency(G.to_undirected())
-    
+
     # Compute network centralisation
     degree_centrality = nx.degree_centrality(G)
     max_centrality = max(degree_centrality.values())
     N = len(G)
     network_centralisation = (sum(max_centrality - c for c in degree_centrality.values()) / (N - 2)) if N > 2 else 0
-    
+
     # Create the DataFrame with all metrics
     metrics_df = pd.DataFrame({
         'Node': list(G.nodes),
@@ -119,7 +118,5 @@ def compute_network_metrics(G, region_name):
         'Transitivity': [transitivity] * len(G.nodes()),
         'Local Efficiency': [local_efficiency] * len(G.nodes())
     })
-        
+
     return metrics_df
-
-

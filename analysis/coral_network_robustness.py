@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-#
-# This work is licensed under a Creative Commons Attribution 4.0 International License.
-#
-# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
-# Commons, PO Box 1866, Mountain View, CA 94042, USA.
-#
-# Copyright University of York, Isaac Abbott, 2026
-import os
-import random
-import matplotlib
-import matplotlib.pyplot as plt
-import networkx as nx
-import numpy as np
-import pandas as pd
-from coral_network_analysis_setup import *
-from joblib import Parallel, delayed
-from tqdm import tqdm
-
 """
 This script randomly removes nodes from a graph and recalculates
 network metrics. 
@@ -26,6 +8,22 @@ It then plots them in a nice graph
 @author: jhill1; https://github.com/jhill1
 @author: ia947; https://github.com/ia947
 """
+#
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York, Isaac Abbott, 2026
+import random
+import matplotlib
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import pandas as pd
+from joblib import Parallel, delayed
+from tqdm import tqdm
+from coral_network_analysis_setup import *
 
 # remember to change the files in coral_network_analysis_setup.py
 output_file = "all_regions_combined_robustness_0.5km.pdf"

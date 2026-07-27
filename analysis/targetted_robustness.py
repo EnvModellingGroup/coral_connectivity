@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-#
-# This work is licensed under a Creative Commons Attribution 4.0 International License.
-#
-# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
-# Commons, PO Box 1866, Mountain View, CA 94042, USA.
-#
-# Copyright University of York, Isaac Abbott, 2026
-import os
-import random
-import matplotlib
-import matplotlib.pyplot as plt
-import networkx as nx
-import numpy as np
-import pandas as pd
-from coral_network_analysis_setup import *
-from joblib import Parallel, delayed
-from tqdm import tqdm
-
 """
 Removal of nodes in graph based on the highest ranking node
 
@@ -27,7 +9,21 @@ Generates a single plot.
 @author: jhill1; https://github.com/jhill1
 @author: ia947; https://github.com/ia947
 """
-
+#
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York, Isaac Abbott, 2026
+import random
+import matplotlib
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import pandas as pd
+from joblib import Parallel, delayed
+from coral_network_analysis_setup import *
 
 # --- Matplotlib Styling Settings ---
 matplotlib.style.use("seaborn-v0_8-ticks")
@@ -183,7 +179,7 @@ if __name__ == "__main__":
     JOBS = -2
 
     strategies = ["degree", "betweenness", "eigenvector"]
-    
+
     # Palette mapping for strategies
     strategy_colors = {
         "Random": "#7f7f7f",       # Neutral Grey
@@ -206,7 +202,7 @@ if __name__ == "__main__":
             G, iterations=RANDOM_ITERATIONS, max_pct=MAX_REMOVAL_PCT, n_jobs=JOBS
         )
         df_random["region"] = region
-        
+
         # Format random results for uniform concatenation
         df_random_formatted = pd.DataFrame({
             "region": region,

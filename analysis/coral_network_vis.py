@@ -1,30 +1,23 @@
 #!/usr/bin/env python3
-#
-# This work is licensed under a Creative Commons Attribution 4.0 International License.
-#
-# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
-# Commons, PO Box 1866, Mountain View, CA 94042, USA.
-#
-# Copyright University of York, Isaac Abbott, 2026
-import os
-import numpy as np
-import networkx as nx
-import graphviz
-from networkx.drawing.nx_agraph import graphviz_layout
-import matplotlib.pyplot as plt
-import pandas as pd
-from shapely.geometry import Point
-import geopandas
-import matplotlib
-from coral_network_analysis_setup import *
-
 """
 Visualise matrices as a graph network
 
 @author: jhill1; https://github.com/jhill1
 @author: ia947; https://github.com/ia947
 """
-
+#
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York, Isaac Abbott, 2026
+import networkx as nx
+import graphviz
+from networkx.drawing.nx_agraph import graphviz_layout
+import matplotlib
+import matplotlib.pyplot as plt
+from coral_network_analysis_setup import *
 
 matplotlib.style.use("seaborn-v0_8-ticks")
 plt.rcParams.update({
@@ -66,20 +59,21 @@ def draw_graph(G, use_graphviz=False):
                 pos = nx.spring_layout(g, seed=42, k=0.3, iterations=100)
         else:
             pos = nx.spring_layout(g, seed=42, k=0.3, iterations=100)  # Adjust k for spread
-    
+
         # Compute degree centrality for coloring
         closeness_centrality = nx.closeness_centrality(g)
         centrality_values = list(closeness_centrality.values())
         max_centrality = min(max_centrality, max(centrality_values))
         min_centrality = max(min_centrality, min(centrality_values))
-    
+
         # Node properties
         node_color = [closeness_centrality[node] for node in g.nodes()]
-    
+
         # Edge properties
         edge_weights = nx.get_edge_attributes(g, 'weight')
-        edge_width = [0.001 + 2 * edge_weights[edge] for edge in g.edges()]  # Scale edge width by weight
-    
+        # Scale edge width by weight. Not used but see comment in the nx.draw below
+        edge_width = [0.001 + 2 * edge_weights[edge] for edge in g.edges()]
+
         # Draw graph
         nx.draw(
             g,
@@ -96,11 +90,15 @@ def draw_graph(G, use_graphviz=False):
         )
 
         i = i + 1
-    
+
     # Add colorbar for node centrality
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=min_centrality, vmax=max_centrality))
+    sm = plt.cm.ScalarMappable(cmap=cmap, 
+                               norm=plt.Normalize(vmin=min_centrality, vmax=max_centrality))
     sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axs.ravel().tolist(), orientation='horizontal',fraction=0.046, pad=0.04)
+    cbar = fig.colorbar(sm, ax=axs.ravel().tolist(),
+                        orientation='horizontal',
+                        fraction=0.046,
+                        pad=0.04)
     cbar.set_label("Closeness Centrality", fontsize=6)
     plt.tight_layout()
     plt.savefig("centrality_network.pdf",dpi=300)
@@ -112,12 +110,11 @@ def draw_graph(G, use_graphviz=False):
 G = []
 for region, filename in locations.items():
     print(f"Processing {region}...")
-    
+
     # Read and process the adjacency matrix
     adjacency_matrix = read_adjacency_matrix(filename)
 
     G.append(create_adjacency_matrix_graph(adjacency_matrix.to_numpy()))
-    
+
 # Visualise the graph
 draw_graph(G, use_graphviz=True)
-
