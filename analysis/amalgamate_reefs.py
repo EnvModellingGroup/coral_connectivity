@@ -112,6 +112,6 @@ if __name__ == "__main__":
     OUTPUT_SHAPEFILE = "GBR_names_reprojected_2km.shp"
     
     clump_reef_polygons(INPUT_SHAPEFILE, OUTPUT_SHAPEFILE, distance_threshold_meters=2000)
-    print("Add x and y locs"
+    print("Add x and y locs")
 
 
