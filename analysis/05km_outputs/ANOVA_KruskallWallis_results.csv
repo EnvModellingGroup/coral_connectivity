@@ -1,0 +1,25 @@
+Metric,Test,Statistic,p-value,Significant difference,GBR Mean,GBR Median,IO Mean,IO Median,Caribbean Mean,Caribbean Median,Pairwise Comparison
+Degree Centrality,Kruskal-Wallis,1524.5046339418946,0.0,Yes,0.009670471670309017,0.0047169811320754715,1.713283674736189,1.8044692737430168,0.25912854469877766,0.2251184834123223,
+Degree Centrality,Dunn's test,,5.726571085228435e-221,Yes,,,,,,,Caribbean vs GBR
+Degree Centrality,Dunn's test,,0.001983021669127561,Yes,,,,,,,Caribbean vs IO
+Degree Centrality,Dunn's test,,8.757082740953264e-138,Yes,,,,,,,GBR vs IO
+Closeness Centrality,Kruskal-Wallis,1534.913497409384,0.0,Yes,0.0332972958923759,0.04136378940136395,0.8931390428921001,0.9623655913978495,0.38153900843058847,0.39157645019998205,
+Closeness Centrality,Dunn's test,,3.3258404968109157e-223,Yes,,,,,,,Caribbean vs GBR
+Closeness Centrality,Dunn's test,,0.002596552511752679,Yes,,,,,,,Caribbean vs IO
+Closeness Centrality,Dunn's test,,6.05169238376571e-138,Yes,,,,,,,GBR vs IO
+Betweenness Centrality,Kruskal-Wallis,560.631580455359,1.8213739203660814e-122,Yes,0.0004671003772926335,2.5596840801457643e-05,0.0008524609601127083,0.00074522538355302,0.003418462976140871,0.0009626773431462012,
+Betweenness Centrality,Dunn's test,,4.953551747835971e-76,Yes,,,,,,,Caribbean vs GBR
+Betweenness Centrality,Dunn's test,,0.0018359493022318085,Yes,,,,,,,Caribbean vs IO
+Betweenness Centrality,Dunn's test,,4.725127267837124e-58,Yes,,,,,,,GBR vs IO
+Eigenvector Centrality,Kruskal-Wallis,1216.7384252088355,6.146218649659317e-265,Yes,0.004020869462479716,1.6649238565875918e-12,0.07194355264804494,0.08190526878672046,0.0329851820323403,0.020984841778435685,
+Eigenvector Centrality,Dunn's test,,3.4401789444520535e-172,Yes,,,,,,,Caribbean vs GBR
+Eigenvector Centrality,Dunn's test,,0.0007163541731903673,Yes,,,,,,,Caribbean vs IO
+Eigenvector Centrality,Dunn's test,,5.696157479089608e-115,Yes,,,,,,,GBR vs IO
+Harmonic Centrality,Kruskal-Wallis,41.43192587155003,1.0073296323863432e-09,Yes,142.11500979628605,168.02318514818447,165.5861111111111,175.5,183.93924349881829,185.98333333333335,
+Harmonic Centrality,Dunn's test,,5.102031183613842e-10,Yes,,,,,,,Caribbean vs GBR
+Harmonic Centrality,Dunn's test,,0.00013767048906304066,Yes,,,,,,,Caribbean vs IO
+Harmonic Centrality,Dunn's test,,0.7445747034891452,No,,,,,,,GBR vs IO
+Clustering Coefficient,Kruskal-Wallis,806.3565039704969,7.978292225294014e-176,Yes,0.436089202482011,0.46244167563964517,0.9835958254802032,0.9874807395993837,0.7257209422758223,0.7131019036954087,
+Clustering Coefficient,Dunn's test,,8.184401711005506e-82,Yes,,,,,,,Caribbean vs GBR
+Clustering Coefficient,Dunn's test,,8.506208841812488e-16,Yes,,,,,,,Caribbean vs IO
+Clustering Coefficient,Dunn's test,,1.0518159957150091e-109,Yes,,,,,,,GBR vs IO
