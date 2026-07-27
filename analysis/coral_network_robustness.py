@@ -67,7 +67,7 @@ def _single_iteration(G_original, num_nodes_to_remove, iteration_index):
 
     # 4. Compute metrics using custom function
     region_label = f"Iteration_{iteration_index + 1}"
-    metrics = compute_network_metrics(G, region_label)
+    metrics = compute_network_metrics(G)
 
     # --- ADDED: Compute Relative Largest Connected Component (S_LCC) ---
     if len(G) > 0:
@@ -135,7 +135,7 @@ if __name__ == "__main__":
         G = create_adjacency_matrix_graph(adjacency_matrix.to_numpy())
 
         # Compute baseline (present day) metrics
-        baseline_df = compute_network_metrics(G, region)
+        baseline_df = compute_network_metrics(G)
 
         # Calculate Baseline S_LCC ---
         N_0 = len(G)

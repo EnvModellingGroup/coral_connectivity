@@ -28,6 +28,7 @@ from sklearn.metrics import silhouette_score
 from scipy.cluster.hierarchy import linkage, fcluster
 import networkx as nx
 import geopandas
+from shapely.geometry import Point
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import scikit_posthocs as sp
 from coral_network_analysis_setup import *
@@ -64,7 +65,7 @@ for region, filename in locations.items():
     # Read and process the adjacency matrix
     adjacency_matrix = read_adjacency_matrix(filename)
     G = create_adjacency_matrix_graph(adjacency_matrix.to_numpy())
-    metrics_df = compute_network_metrics(G, region)
+    metrics_df = compute_network_metrics(G)
     metrics_df = metrics_df.set_index(adjacency_matrix.index)
     coords = pd.read_csv(os.path.join("../data/",region+"_coords.csv"),index_col=0,header=0)
     metrics_df = metrics_df.join(coords)

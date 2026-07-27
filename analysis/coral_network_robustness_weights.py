@@ -92,7 +92,7 @@ def _single_iteration(G_original, num_nodes_to_remove, iteration_index, alpha=1.
 
     # 5. Compute metrics using your custom function
     region_label = f"Iteration_{iteration_index + 1}"
-    metrics = compute_network_metrics(G, region_label)
+    metrics = compute_network_metrics(G)
 
     return metrics
 
@@ -156,7 +156,7 @@ if __name__ == '__main__':
         G = create_adjacency_matrix_graph(adjacency_matrix.to_numpy())
 
         # Compute baseline (present day) metrics
-        baseline_df = compute_network_metrics(G, region)
+        baseline_df = compute_network_metrics(G)
         baseline_means = baseline_df.drop(columns=['Node'], errors='ignore').mean(numeric_only=True)
 
         # Detect network-wide metrics automatically
