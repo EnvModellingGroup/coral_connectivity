@@ -1,17 +1,23 @@
-# -*- coding: utf-8 -*-
-"""
-Within-Basin Modularity & Community Detection for Coral Reef Networks
-
-Created on Sun 2026
-@author: isaac / AI Collaborator
-"""
-
+#!/usr/bin/env python3
+#
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York, 2026
 import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
 from coral_network_analysis_setup import *
+
+"""
+Calculates a few within-basin metrics on the networks
+
+@author: jhill1; https://github.com/jhill1
+"""
 
 # --- Matplotlib Styling Settings ---
 matplotlib.style.use("seaborn-v0_8-ticks")

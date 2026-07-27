@@ -1,22 +1,49 @@
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York, Isaac Abbott, 2026
 import os
 import networkx as nx
 import pandas as pd
 import numpy as np
+
+"""
+This script sets up variables and methods used in most of the
+other scripts.
+
+The switch to compare the different GBR is all done by hand and 
+carefully checking things
+
+@author: jhill1; https://github.com/jhill1
+@author: ia947; https://github.com/ia947
+"""
 
 #################################
 ###### DATA PRE-PROCESSING ######
 #################################
 
 # Define locations for corresponding adjacency matrix filenames
-# NOTE GBR NEEDS altering for each resolution. Then run the network stats, vis and robustness scripts
+# NOTE GBR NEEDS altering for each resolution by hand. See below.
+# Then run the network stats, vis and robustness scripts, etc
 locations = {
-    "GBR": os.path.join("../../modern_2km", "gbr_connectivity_decimal_G.retiformis.csv"),
+    "GBR": os.path.join("../../modern_0.5km", "gbr_connectivity_decimal_G.retiformis.csv"),
     "IO": os.path.join("../data/", "IO_single_step_explicit_mean_connectivity_matrix.csv"),
     "Caribbean": os.path.join("../data", "Caribbean_matrix.csv"),
     }
 
+# Comment this out if you want to compare the three GBR models instead.
+#locations = {
+#    "GBR_05": os.path.join("../../modern_0.5km", "gbr_connectivity_decimal_G.retiformis.csv"),
+#    "GBR_2": os.path.join("../../modern_2km", "gbr_connectivity_decimal_G.retiformis.csv"),
+#    "GBR_9": os.path.join("../../modern_9km", "gbr_connectivity_decimal_G.retiformis.csv"),
+#    }
 
 def read_adjacency_matrix(filename):
+    """
+    Reads in one of the standardised matricies
+    """
     if filename.endswith(".csv"):
         return pd.read_csv(filename, index_col=0, header=0)
     else:
@@ -24,6 +51,10 @@ def read_adjacency_matrix(filename):
 
 # Function to create directed graph from connectivity matrix
 def create_adjacency_matrix_graph(adjacency_matrix):
+    """
+    Turns a matrix (numpy array) into a graph network
+    """
+
     G = nx.DiGraph()
     num_nodes = len(adjacency_matrix)
     G.add_nodes_from(range(num_nodes))
@@ -39,6 +70,12 @@ def create_adjacency_matrix_graph(adjacency_matrix):
 
 # Function to compute all network measures
 def compute_network_metrics(G, region_name):
+    """
+    Computes the network metrics and outputs a dataframe of the nodes. 
+    For some metrics the same value will be at all nodes as they are
+    network-wide metrics
+    """
+
     # Centrality measures
     degree_centrality = nx.degree_centrality(G)
     closeness_centrality = nx.closeness_centrality(G)
@@ -82,12 +119,7 @@ def compute_network_metrics(G, region_name):
         'Transitivity': [transitivity] * len(G.nodes()),
         'Local Efficiency': [local_efficiency] * len(G.nodes())
     })
-    
-    # Save results to csv
-    #output_filename = f"{region_name}_network_metrics.csv"
-    #metrics_df.to_csv(output_filename, index=False, mode="w")
-    #print(f"Metrics for {region_name} saved to {output_filename}")
-    
+        
     return metrics_df
 
 

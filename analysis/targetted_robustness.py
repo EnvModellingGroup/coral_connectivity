@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Targeted Attack & Network Resilience Analysis for Coral Reef Networks
-
-Created on Sun 2026
-@author: isaac / AI Collaborator
-"""
-
+#!/usr/bin/env python3
+#
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York, Isaac Abbott, 2026
 import os
 import random
 import matplotlib
@@ -16,6 +16,18 @@ import pandas as pd
 from coral_network_analysis_setup import *
 from joblib import Parallel, delayed
 from tqdm import tqdm
+
+"""
+Removal of nodes in graph based on the highest ranking node
+
+We look at betweeness, eigenvector and degree centrality
+
+Generates a single plot.
+
+@author: jhill1; https://github.com/jhill1
+@author: ia947; https://github.com/ia947
+"""
+
 
 # --- Matplotlib Styling Settings ---
 matplotlib.style.use("seaborn-v0_8-ticks")
@@ -167,7 +179,7 @@ def run_random_attack(G_original, iterations=50, max_pct=60, n_jobs=-2):
 if __name__ == "__main__":
 
     MAX_REMOVAL_PCT = 60
-    RANDOM_ITERATIONS = 50
+    RANDOM_ITERATIONS = 100
     JOBS = -2
 
     strategies = ["degree", "betweenness", "eigenvector"]

@@ -1,10 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Feb  4 13:01:43 2025
-
-@author: isaac
-"""
-
+#!/usr/bin/env python3
+#
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York, Isaac Abbott, 2026
 import os
 import pandas as pd
 import numpy as np
@@ -25,6 +26,16 @@ from shapely.geometry import Point
 import geopandas
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import scikit_posthocs as sp
+
+"""
+Calculate network stats, PCA, and other bits and peices
+
+Generates a lot of plots and data :-)
+
+@author: jhill1; https://github.com/jhill1
+@author: ia947; https://github.com/ia947
+"""
+
 sns.set_style("ticks")
 # --- Apply Nature-style defaults ---
 matplotlib.style.use("seaborn-v0_8-ticks")
@@ -582,7 +593,6 @@ df_all['Cluster'] = cluster_labels
 # Calculate correlation matrix for metrics
 correlation_matrix = df_all[metrics].corr(method='pearson')
 sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', linewidths=0.5, vmin=-1, vmax=1)
-#plt.title('Pearson Correlation Matrix of Network Metrics')
 plt.xticks(rotation=45, ha='right')
 plt.savefig("Metric_Cor_Pearson.pdf",dpi=300)
 #plt.show()
@@ -591,7 +601,6 @@ plt.close()
 # For non-parametric correlation (Spearman)
 correlation_matrix_spearman = df_all[metrics].corr(method='spearman')
 sns.heatmap(correlation_matrix_spearman, annot=True, cmap='coolwarm', linewidths=0.5, vmin=-1, vmax=1)
-#plt.title('Spearman Correlation Matrix of Network Metrics')
 plt.xticks(rotation=45, ha='right')
 plt.savefig("Metric_Cor_Spearman.pdf",dpi=300)
 #plt.show()

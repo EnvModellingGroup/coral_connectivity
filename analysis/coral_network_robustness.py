@@ -1,10 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Oct 25 17:39:13 2024
-
-@author: isaac
-"""
-
+#!/usr/bin/env python3
+#
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York, Isaac Abbott, 2026
 import os
 import random
 import matplotlib
@@ -15,6 +16,19 @@ import pandas as pd
 from coral_network_analysis_setup import *
 from joblib import Parallel, delayed
 from tqdm import tqdm
+
+"""
+This script randomly removes nodes from a graph and recalculates
+network metrics. 
+
+It then plots them in a nice graph
+
+@author: jhill1; https://github.com/jhill1
+@author: ia947; https://github.com/ia947
+"""
+
+# remember to change the files in coral_network_analysis_setup.py
+output_file = "all_regions_combined_robustness_0.5km.pdf"
 
 matplotlib.style.use("seaborn-v0_8-ticks")
 plt.rcParams.update(
@@ -38,8 +52,6 @@ matplotlib.rcParams["pdf.fonttype"] = 42
 ##### Simulate random node removal, including any unconnected nodes #####
 #########################################################################
 
-
-# --- Step 1: Extract the work of a SINGLE iteration into its own function ---
 def _single_iteration(G_original, num_nodes_to_remove, iteration_index):
     """Worker function to process a single simulation run and measure LCC."""
     N_0 = len(G_original)
@@ -73,11 +85,12 @@ def _single_iteration(G_original, num_nodes_to_remove, iteration_index):
 
     return metrics
 
+def simulate_node_removal_random(G_original, removal_percentage, iterations=100, n_jobs=-1):
+    """
+    Runs the random node removal in parallel. 100 iterations, 
+    so running on 100 cores is fine (if you have them)
+    """
 
-# --- Step 2: Create the wrapper function to handle parallelization ---
-def simulate_node_removal_random(
-    G_original, removal_percentage, iterations=100, n_jobs=-1
-):
     if removal_percentage > 1:
         removal_percentage /= 100.0
 
@@ -103,93 +116,7 @@ def simulate_node_removal_random(
     return combined_df
 
 
-def summarize_simulation_results(results_df):
-    """Takes the massive stacked DataFrame, groups by iteration to find
-
-    the network averages, and then summarizes the stats across all runs.
-    """
-    print("\nProcessing summary statistics...")
-
-    df_no_node = results_df.drop(columns=["Node"], errors="ignore")
-    network_level_runs = df_no_node.groupby("iteration").mean()
-
-    summary = network_level_runs.describe().T
-    summary = summary[["mean", "50%", "std", "min", "max"]].rename(
-        columns={"50%": "median", "std": "sd"}
-    )
-
-    print("\n" + "=" * 50)
-    print("      SIMULATION SUMMARY (NETWORK-WIDE MEANS)     ")
-    print("=" * 50)
-    print(summary.to_string(float_format="{:.5f}".format))
-
-    return summary
-
-
-############################################################
-###### SIMULATE NODE REMOVAL based on a single metric ######
-############################################################
-
-
-def simulate_node_removal(G, region, metric="degree", removal_percent=10):
-    """Simulate removal of top X% nodes by centrality metric and compute efficiency loss"""
-    try:
-        if metric == "degree":
-            scores = nx.degree_centrality(G)
-        elif metric == "eigenvector":
-            scores = nx.eigenvector_centrality(G, max_iter=1000)
-        elif metric == "betweenness":
-            scores = nx.betweenness_centrality(G, normalized=True)
-        else:
-            raise ValueError(f"Unsupported metric: {metric}")
-    except Exception as e:
-        print(f"Error calculating {metric} centrality: {str(e)}")
-        return None
-
-    nodes = sorted(scores, key=scores.get, reverse=True)
-    if not nodes:
-        print("No nodes available for removal")
-        return None
-
-    n_remove = max(1, int(len(nodes) * removal_percent / 100))
-    nodes_to_remove = nodes[:n_remove]
-
-    try:
-        G_removed = G.copy()
-        G_removed.remove_nodes_from(nodes_to_remove)
-        original_efficiency = nx.global_efficiency(G.to_undirected())
-        original_edges = G.number_of_edges()
-        new_efficiency = nx.global_efficiency(G_removed.to_undirected())
-        edges_lost = original_edges - G_removed.number_of_edges()
-    except Exception as e:
-        print(f"Error during node removal: {str(e)}")
-        return None
-
-    return {
-        "region": region,
-        "metric": metric,
-        "removal_percent": removal_percent,
-        "edges_lost": edges_lost,
-        "efficiency_loss_percent": (
-            (1 - new_efficiency / original_efficiency) * 100
-            if original_efficiency > 0
-            else 0.0
-        ),
-        "nodes_removed": nodes_to_remove,
-        "original_efficiency": original_efficiency,
-        "new_efficiency": new_efficiency,
-        "node_impacts": {node: scores[node] for node in nodes_to_remove},
-    }
-
-
 if __name__ == "__main__":
-
-    # Configuration for different regions
-    SIMULATION_PARAMS = {
-        "Caribbean": {"metric": "eigenvector", "removal_percent": [5, 10, 15]},
-        "IO": {"metric": "betweenness", "removal_percent": [5, 10, 15]},
-        "GBR": {"metric": "degree", "removal_percent": [5, 10, 15]},
-    }
 
     results = []
 
@@ -209,10 +136,10 @@ if __name__ == "__main__":
         adjacency_matrix = read_adjacency_matrix(filename)
         G = create_adjacency_matrix_graph(adjacency_matrix.to_numpy())
 
-        # 1. Compute baseline (present day) metrics
+        # Compute baseline (present day) metrics
         baseline_df = compute_network_metrics(G, region)
 
-        # --- ADDED: Calculate Baseline S_LCC ---
+        # Calculate Baseline S_LCC ---
         N_0 = len(G)
         if N_0 > 0:
             if G.is_directed():
@@ -243,7 +170,7 @@ if __name__ == "__main__":
             f"Detected network-wide metrics for {region}: {network_wide_metrics}"
         )
 
-        # 2. Loop percentages from 1 to 60
+        # Loop percentages from 1 to 60
         for pct in range(1, 61):
             num_nodes_to_remove = int(len(G) * (pct / 100.0))
             print(f"Running {pct}% removal for {region}...")
@@ -359,12 +286,12 @@ if __name__ == "__main__":
 
             colour = region_palette.get(region, "blue")
 
-            # 1. Plot the Mean Line
+            # Plot the Mean Line
             ax.plot(
                 pcts, means, color=colour, linewidth=0.6, label=f"{region}"
             )
 
-            # 2. Plot the Shaded Area (Min to Max)
+            # Plot the Shaded Area (Min to Max)
             ax.fill_between(pcts, mins, maxs, color=colour, alpha=0.15)
 
         # Apply pretty title if mapped, otherwise use metric column name
@@ -386,9 +313,7 @@ if __name__ == "__main__":
         fontsize=10,
     )
     plt.tight_layout()
-    plt.savefig("all_regions_combined_robustness_2km.pdf", dpi=72)
+    plt.savefig(output_file, dpi=72)
     plt.close()
 
-    print(
-        "Successfully saved unified plot: all_regions_combined_robustness_0.5km.pdf"
-    )
+    print("Successfully saved unified plot: "+output_file)

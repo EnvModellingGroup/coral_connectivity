@@ -1,6 +1,30 @@
+#!/usr/bin/env python3
+#
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York 2026
 import geopandas as gpd
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering
+
+"""
+This script creates reef clusters from a shapefile (polygons of reefs)
+by using a distance threshold to amalgamate these into a single "reef".
+
+Saves a new shapefile, but that needs a bit more processing:
+
+To add x and y locs, use QGIS to generate centroids, then you can use the append 
+fields tool to copy them across. 
+
+You also need to add a LOC_NAME_S field which is a string and can be the 
+cluster_id (or other unique string).
+
+@author: jhill1; https://github.com/jhill1
+"""
+
 
 
 def resolve_sector(sectors):
@@ -90,5 +114,4 @@ if __name__ == "__main__":
     clump_reef_polygons(INPUT_SHAPEFILE, OUTPUT_SHAPEFILE, distance_threshold_meters=2000)
     print("Add x and y locs"
 
-# To add x and y locs, use QGIs to generate centroids, then you can use the append fields tool to copy them across. 
-# You also need to add a LOC_NAME_S field which is a striong and can be the cluster_id (or other unique string).
+

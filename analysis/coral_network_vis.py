@@ -1,4 +1,11 @@
-
+#!/usr/bin/env python3
+#
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative 
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York, Isaac Abbott, 2026
 import os
 import numpy as np
 import networkx as nx
@@ -10,6 +17,15 @@ from shapely.geometry import Point
 import geopandas
 import matplotlib
 from coral_network_analysis_setup import *
+
+"""
+Visualise matrices as a graph network
+
+@author: jhill1; https://github.com/jhill1
+@author: ia947; https://github.com/ia947
+"""
+
+
 matplotlib.style.use("seaborn-v0_8-ticks")
 plt.rcParams.update({
     "font.family": "Arial",
@@ -104,16 +120,4 @@ for region, filename in locations.items():
     
 # Visualise the graph
 draw_graph(G, use_graphviz=True)
-    
-    # Compute and save the network metrics
-    #metrics_df = compute_network_metrics(G, region)
-    # attach coords and names to metrics
-    #metrics_df = metrics_df.set_index(adjacency_matrix.index)
-    #coords = pd.read_csv(os.path.join("../data/",region+"_coords.csv"),index_col=0,header=0)
-    #metrics_df = metrics_df.join(coords)
-    #metrics_df['geometry'] = metrics_df.apply(lambda x: Point((float(x.Lon), float(x.Lat))), axis=1)
-    #metrics_df = geopandas.GeoDataFrame(metrics_df, geometry='geometry')
-
-    # dump to shapefile
-    #metrics_df.to_file(os.path.join("../data/",region+'_geometries.shp'), driver='ESRI Shapefile')
 
