@@ -18,6 +18,7 @@ import os
 import networkx as nx
 import pandas as pd
 import numpy as np
+import math
 
 #################################
 ###### DATA PRE-PROCESSING ######
@@ -67,20 +68,32 @@ def create_adjacency_matrix_graph(adjacency_matrix):
 ###############################
 
 # Function to compute all network measures
-def compute_network_metrics(G):
+def compute_network_metrics(G, weights=False):
     """
     Computes the network metrics and outputs a dataframe of the nodes. 
     For some metrics the same value will be at all nodes as they are
     network-wide metrics
     """
 
+    for u, v, data in G.edges(data=True):
+        data['neg_log_weight'] = -math.log(data['weight'])
+    
+    # if weights, some metrics need some adjustments in the call
+    if weights:
+        eigenvector_centrality = nx.eigenvector_centrality(G, weight="neg_log_weight", max_iter=1000)
+        betweenness_centrality = nx.betweenness_centrality(G, normalized=True, weight="neg_log_weight")
+        closeness_centrality = nx.closeness_centrality(G, distance="neg_log_weight")
+        harmonic_centrality = nx.harmonic_centrality(G, distance="neg_log_weight")
+        clustering_coefficient = nx.clustering(G.to_undirected(), weight="weight")
+    else:
+        closeness_centrality = nx.closeness_centrality(G)
+        betweenness_centrality = nx.betweenness_centrality(G, normalized=True)
+        eigenvector_centrality = nx.eigenvector_centrality(G, max_iter=1000)
+        harmonic_centrality = nx.harmonic_centrality(G)
+        clustering_coefficient = nx.clustering(G.to_undirected())
+
     # Centrality measures
     degree_centrality = nx.degree_centrality(G)
-    closeness_centrality = nx.closeness_centrality(G)
-    betweenness_centrality = nx.betweenness_centrality(G, normalized=True)
-    eigenvector_centrality = nx.eigenvector_centrality(G, max_iter=1000)
-    harmonic_centrality = nx.harmonic_centrality(G)
-    clustering_coefficient = nx.clustering(G.to_undirected())
 
     # Graph-level measures
     density = nx.density(G)

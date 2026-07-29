@@ -25,6 +25,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
+from sklearn.metrics import adjusted_rand_score
 from scipy.cluster.hierarchy import linkage, fcluster
 import networkx as nx
 import geopandas
@@ -65,7 +66,7 @@ for region, filename in locations.items():
     # Read and process the adjacency matrix
     adjacency_matrix = read_adjacency_matrix(filename)
     G = create_adjacency_matrix_graph(adjacency_matrix.to_numpy())
-    metrics_df = compute_network_metrics(G)
+    metrics_df = compute_network_metrics(G,weights=True)
     metrics_df = metrics_df.set_index(adjacency_matrix.index)
     coords = pd.read_csv(os.path.join("../data/",region+"_coords.csv"),index_col=0,header=0)
     metrics_df = metrics_df.join(coords)
@@ -327,6 +328,17 @@ ANOVA_KruskallWallis_results = []
 for metric in comparison_metrics:
     print(f"\nComparing {metric} between regions:")
 
+    # Calculate mean and median for each region dynamically
+    region_stats = {}
+    for region in unique_regions:
+        reg_data = df_all[df_all["Region"] == region][metric].dropna()
+        mean_val = reg_data.mean()
+        median_val = reg_data.median()
+        
+        region_stats[f"{region} Mean"] = mean_val
+        region_stats[f"{region} Median"] = median_val
+        print(f"  {region} - Mean: {mean_val:.4f}, Median: {median_val:.4f}")
+
     # Group data by Region (GBR, IO, Caribbean) to match normality results
     data_by_region = [df_all[df_all["Region"] == region][metric].dropna() for region in unique_regions]
 
@@ -351,14 +363,17 @@ for metric in comparison_metrics:
     else:
         print(f"    No significant difference found in {metric}")
 
-    # Store ANOVA/Kruskall-Wallis results
-    ANOVA_KruskallWallis_results.append({
+    # Store main test entry including region means and medians
+    main_result_entry = {
         "Metric": metric,
         "Test": test_used,
         "Statistic": stat,
         "p-value": p,
         "Significant difference": "Yes" if p < 0.05 else "No"
-        })
+    }
+    # Append region-specific summary statistics to main test dictionary
+    main_result_entry.update(region_stats)
+    ANOVA_KruskallWallis_results.append(main_result_entry)
 
     # If significant, perform post-hoc test
     if p < 0.05:
@@ -481,14 +496,14 @@ print(pc2_loadings_df)
 
 # Elbow Method
 wcss = []  # List to store within-cluster sum of squares (WCSS) for each k
-for k in range(2, 11):  # Check for k from 2 to 10 clusters
+for k in range(1, 11):  # Check for k from 2 to 10 clusters
     kmeans = KMeans(n_clusters=k, random_state=42)
     kmeans.fit(scaled_data)
     wcss.append(kmeans.inertia_)
 
 # Plot the elbow curve
 plt.figure(figsize=(1.0, 1.0))
-plt.plot(range(2, 11), wcss, marker='o', linestyle='--', ms=1)
+plt.plot(range(1, 11), wcss, marker='o', linestyle='--', ms=1)
 plt.xlabel('Number of Clusters')
 plt.ylabel('WCSS')
 plt.savefig("Clusters_elbow.pdf",dpi=300, bbox_inches='tight')
@@ -496,7 +511,7 @@ plt.close()
 
 # Silhouette Method
 sil_scores = []  # List to store silhouette scores for each k
-for k in range(2, 11):  # Check for k from 2 to 10 clusters
+for k in range(1, 11):  # Check for k from 2 to 10 clusters
     kmeans = KMeans(n_clusters=k, random_state=42)
     cluster_labels = kmeans.fit_predict(scaled_data)
     sil_score = silhouette_score(scaled_data, cluster_labels)
@@ -504,7 +519,7 @@ for k in range(2, 11):  # Check for k from 2 to 10 clusters
 
 # Plot the silhouette scores
 plt.figure(figsize=(1.0, 1.0))
-plt.plot(range(2, 11), sil_scores, marker='o', linestyle='--', ms=1)
+plt.plot(range(1, 11), sil_scores, marker='o', linestyle='--', ms=1)
 plt.xlabel('Number of Clusters')
 plt.ylabel('Silhouette Score')
 sns.despine()
@@ -520,7 +535,7 @@ reduced_data = pca.fit_transform(scaled_data)
 linkage_matrix = linkage(reduced_data, method='ward')
 
 # Assign clusters
-num_clusters = 3  # Adjust as needed
+num_clusters = 2  # Adjust as needed
 cluster_labels = fcluster(linkage_matrix, t=num_clusters, criterion='maxclust')
 
 # 2. Define distinct colors and SWAP Cluster 1 & Cluster 2
@@ -535,6 +550,8 @@ region_markers = {
 }
 
 # 4. Add data to the dataframe
+# Align cluster labels back to the non-NA dataset index
+df_all.loc[metrics_data.index, 'Cluster'] = cluster_labels
 df_all['Cluster'] = cluster_labels
 df_all['PC1'] = reduced_data[:, 0]
 df_all['PC2'] = reduced_data[:, 1]
@@ -542,7 +559,7 @@ df_all['PC2'] = reduced_data[:, 1]
 # --- THE CLEANUP MAGIC STARTS HERE ---
 
 # Create a clean plotting dataframe and map visual properties directly to it
-df_plot = df_all.copy()
+df_plot = df_all.dropna(subset=['Cluster', 'Region']).copy() 
 df_plot['Color'] = df_plot['Cluster'].apply(lambda x: palette[x - 1])
 
 # Shuffle the dataframe randomly so overlapping isn't biased to any specific cluster
@@ -594,6 +611,65 @@ plt.close()
 # Add cluster labels to the dataframe
 df_all['Cluster'] = cluster_labels
 
+
+# Filter out any rows that were dropped due to NaNs
+df_clean = df_all.dropna(subset=['Cluster', 'Region']).copy()
+
+# -------------------------------------------------------------------
+# Option B: % of each Region belonging to Clusters (Row Sums = 100%)
+# "Of all GBR points, what % fell into Cluster 1, 2, or 3?"
+# -------------------------------------------------------------------
+region_cluster_pct = (
+    pd.crosstab(
+        df_clean['Region'], 
+        df_clean['Cluster'], 
+        normalize='index'  # Normalizes across each region row
+    ) * 100
+).round(2)
+
+print("--- Cluster Breakdown Per Region (%) ---")
+print(region_cluster_pct)
+
+# -------------------------------------------------------------------
+# Option A: % of each Cluster made up by Regions (Column Sums = 100%)
+# "Of all points in Cluster 1, what % are GBR?"
+# -------------------------------------------------------------------
+cluster_region_pct = (
+    pd.crosstab(
+        df_clean['Region'], 
+        df_clean['Cluster'], 
+        normalize='columns'  # Normalizes down each cluster column
+    ) * 100
+).round(2)
+
+print("--- Region Composition Per Cluster (%) ---")
+print(cluster_region_pct)
+print("\n")
+
+# -------------------------------------------------------------------
+# Scenario 1: Do your clusters naturally align with geographical Regions?
+# -------------------------------------------------------------------
+ari_region = adjusted_rand_score(df_clean['Region'], df_clean['Cluster'])
+print(f"Adjusted Rand Index (Clusters vs. Regions): {ari_region:.3f}")
+
+
+# Plot Option A (Cluster composition)
+ax = cluster_region_pct.T.plot(
+    kind='bar', 
+    stacked=True, 
+    figsize=(5, 4), 
+    colormap='Set2'
+)
+
+plt.title('Region Composition of Each Cluster')
+plt.xlabel('Cluster')
+plt.ylabel('Percentage (%)')
+plt.legend(title='Region', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.xticks(rotation=0)
+plt.tight_layout()
+plt.savefig("Cluster_Region_Breakdown.pdf", dpi=300)
+plt.close()
+    
 ##########################################
 ###### PEARSON/SPEARMAN CORRELATION ######
 ##########################################
