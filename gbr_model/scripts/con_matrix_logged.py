@@ -16,11 +16,11 @@ from dask.distributed import Client
 import dask.dataframe as dd
 from numpy import interp
 
-competency_curve = "G.retiformis_rubble.csv"
-intersection_file = 'intersection_events.parquet' # from generate_source_sinks.py 
-raw_matrix_csv = 'gbr_connectivity_G.retiformas.csv'
-output_graphic = "GBR_G.retiformas.pdf"
-decimal_matrix = "gbr_connectivity_decimal_G.retiformas.csv"
+competency_curve = "../../data/G.retiformis_rubble.csv"
+intersection_file = '../../../modern_0.5km_high_diff/intersection_events_0.5kmclumps_output' # from generate_source_sinks.py 
+raw_matrix_csv = '../../../modern_0.5km_high_diff/gbr_connectivity_G.retiformas.csv'
+output_graphic = "../../../modern_0.5km_high_diff/GBR_G.retiformas.pdf"
+decimal_matrix = "../../../modern_0.5km_high_diff/gbr_connectivity_decimal_G.retiformas.csv"
 
 if __name__ == "__main__":
     ########################################
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     client = Client()
 
     #import reef polygon shp file
-    polys = gpd.read_file("GBR_names_reprojected.shp")
+    polys = gpd.read_file("../../data/GBR_names_reprojected.shp")
 
     #load in intersection data which is a dask dataframe
     ddf = dd.read_parquet(intersection_file, engine='pyarrow')
