@@ -1,5 +1,14 @@
-import xarray as xr
-import numpy as np
+import os
+# CRITICAL: Must be set BEFORE importing anything else
+os.environ["MALLOC_ARENA_MAX"] = "2"
+
+import gc
+from glob import glob
+import zarr
+
+# CRITICAL: Prevent Zarr/Blosc from spawning hidden C-threads that leak unmanaged memory
+zarr.blosc.use_threads = False
+
 import pandas as pd
 import geopandas as gpd
 import shapely
@@ -7,138 +16,140 @@ from shapely.strtree import STRtree
 import dask.dataframe as dd
 from dask import delayed
 from dask.distributed import Client, LocalCluster
-import dask.array as da
-import geopandas as gpd
+import numpy as np
 
-CHUNK = 5000
-dataset_file = '~/work/projects/PalaeoTides/gbr_connectivity/scripts/test/test_dataset_100_trajs.nc'
-output_file = 'intersection_events_test.parquet'
+dataset_dir = '../../../modern_0.5km_high_diff/Trajectory_tides_wholeGBR_1024.zarr'
+# Changed to a directory format for safe distributed writing
+output_dir = '../../../modern_0.5km_high_diff/intersection_events_0.5kmclumps_output'
+os.makedirs(output_dir, exist_ok=True)
 
-# --- 1. Setup the Cluster ---
-if __name__ == "__main__":
-    # This automatically detects your cores.
-    # If you have 64GB+ RAM, this default is fine. 
-    # If you have limited RAM per core, reduce n_workers and increase threads_per_worker.
-    cluster = LocalCluster()
-    #cluster.scale(1)
-    client = Client(cluster)
+worker_cache = {}
+
+def get_spatial_tree(poly_geoms):
+    if 'tree' not in worker_cache:
+        worker_cache['tree'] = STRtree(poly_geoms)
+    return worker_cache['tree']
+
+def process_time_step(proc_path, t_idx, poly_geoms, polygon_ids):
+    root = zarr.open(proc_path, mode='r')
+    lat = root['lat'][:, t_idx]
+    lon = root['lon'][:, t_idx]
+    time_val = root['time'][:, t_idx]
     
-    print(f"Dashboard link: {client.dashboard_link}")
-    print(f"Running on {len(client.scheduler_info()['workers'])} cores.")
+    traj_arr = root['trajectory']
+    if len(traj_arr.shape) == 1:
+        traj_ids = traj_arr[:]
+    else:
+        traj_ids = traj_arr[:, t_idx]
 
-    # --- 2. Load Data ---
-    
-    # Load Polygons
-    polygons_gdf = gpd.read_file("~/work/projects/PalaeoTides/gbr_connectivity/scripts/GBR_names_reprojected.shp")
-    # Extract geometry array (Shapely 2.0 vectorized array)
-    poly_geoms = polygons_gdf.geometry.values
-    poly_ids = polygons_gdf.index.values
-
-    # CRITICAL OPTIMIZATION: Scatter polygons to all workers
-    # This creates a cached copy on every worker node instantly
-    poly_geoms_future = client.scatter(poly_geoms, broadcast=True)
-    poly_ids_future = client.scatter(poly_ids, broadcast=True)
-
-    # Load Trajectories
-    # Chunking: 'obs': -1 ensures time is contiguous. 
-    # 'trajectory': 5000 is a tunable parameter. 
-    # Smaller chunks = less RAM per worker, but more overhead.
-    ds = xr.open_dataset(dataset_file, chunks={'trajectory': CHUNK, 'obs': -1})
-    traj_dask = da.from_array(ds.trajectory.values, chunks=CHUNK)
-
-    # --- 3. Define the Worker Function ---
-    def process_batch(lat, lon, time, traj_ids, polygon_geoms, polygon_ids):
-        """
-        Runs on the worker. Receives the chunk of data + the scattered polygons.
-        """
-        # A. Prepare Points
-        # Flatten to 1D arrays for vectorized check
-        lat_flat = lat.ravel()
-        lon_flat = lon.ravel()
-        
-        # Fast creation of Shapely point array (no Python loop)
-        points = shapely.points(lon_flat, lat_flat)
-        
-        # B. Build Spatial Index (STRtree)
-        # Building a tree for 1500 items takes < 1ms. 
-        # It is faster to rebuild it locally than to serialize/transfer the tree object.
-        tree = STRtree(polygon_geoms)
-        
-        # C. Query
-        # Returns indices: [index_in_polygons, index_in_points]
-        point_indices, poly_indices = tree.query(points, predicate='within')
-        
-        if len(point_indices) == 0:
-            return gpd.GeoDataFrame({
-                'trajectory': pd.Series(dtype='int64'),
-                'polygon_id': pd.Series(dtype='int64'), # Must match your meta dtype
-                'time': pd.Series(dtype='timedelta64[ns]')
-            })        
-        # D. Map 1D indices back to (Trajectory, Time)
-        n_obs = time.shape[1]
-        
-        # Integer division to find which trajectory; Modulo to find which time step
-        traj_idx_local = point_indices // n_obs 
-        obs_idx = point_indices % n_obs
-
-        # E. Extract Data
-        # Use vectorized indexing
-        intersect_times = time[traj_idx_local, obs_idx]
-        intersect_traj_ids = traj_ids[traj_idx_local]
-        intersect_poly_ids = polygon_ids[poly_indices]
-
-        # F. Build Result DataFrame
-        df = gpd.GeoDataFrame({
-            'trajectory': intersect_traj_ids,
-            'polygon_id': intersect_poly_ids,
-            'time': intersect_times
+    valid_mask = ~(np.isnan(lat) | np.isnan(lon))
+    if not np.any(valid_mask):
+        return pd.DataFrame({
+            'trajectory': pd.Series(dtype='int64'),
+            'polygon_id': pd.Series(dtype='int64'), 
+            'time': pd.Series(dtype='timedelta64[s]')
         })
-        
-        df = df.sort_values(['time','trajectory'])
-        
-        return df
 
+    lat_valid = lat[valid_mask]
+    lon_valid = lon[valid_mask]
+    time_valid = time_val[valid_mask]
+    traj_valid = traj_ids[valid_mask]
 
-    # --- 4. Build the Task Graph ---
-
-    results = []
+    points = shapely.points(lon_valid, lat_valid)
+    tree = get_spatial_tree(poly_geoms)
     
-    # We delay the data chunks, but we pass the SCATTERED futures for polygons
-    # This ensures the polygons are not re-sent over the network/memory bus
+    point_hits, poly_indices = tree.query(points, predicate='within')
+
+    if len(point_hits) == 0:
+        del points, valid_mask, lat_valid, lon_valid
+        gc.collect() 
+        return pd.DataFrame({
+            'trajectory': pd.Series(dtype='int64'),
+            'polygon_id': pd.Series(dtype='int64'), 
+            'time': pd.Series(dtype='timedelta64[s]')
+        })        
+
+    intersect_times = time_valid[point_hits]
+    intersect_traj_ids = traj_valid[point_hits]
+    intersect_poly_ids = polygon_ids[poly_indices]
+
+    df = pd.DataFrame({
+        'trajectory': intersect_traj_ids,
+        'polygon_id': intersect_poly_ids,
+        'time': intersect_times
+    })
     
-    # Extract delayed objects for iteration
-    lon_chunks = ds.lon.data.to_delayed().ravel()
-    lat_chunks = ds.lat.data.to_delayed().ravel()
-    time_chunks = ds.time.data.to_delayed().ravel()
-    traj_chunks = traj_dask.to_delayed().ravel()
-
-    # Note: Ensure all chunk lists are same length. 
-    # If ds.trajectory is 1D and chunks match the 2D vars' axis 0, this works.
+    df['time'] = pd.to_timedelta(df['time'], unit='s')
     
-    for i in range(len(lon_chunks)):
-        res = delayed(process_batch)(
-            lat_chunks[i], 
-            lon_chunks[i], 
-            time_chunks[i], 
-            traj_chunks[i],
-            poly_geoms_future, # <--- Passing the Future
-            poly_ids_future    # <--- Passing the Future
-        )
-        results.append(res)
+    # Strip any implicit pandas indices to guarantee clean Parquet schemas
+    df = df.reset_index(drop=True)
 
-    # --- 5. Compute and Save ---
+    del points, valid_mask, lat_valid, lon_valid, time_valid, traj_valid
+    gc.collect()
+    
+    return df
 
-    # Define schema for Dask DataFrame
-    meta_df = gpd.GeoDataFrame({
+if __name__ == "__main__":
+    cluster = LocalCluster(
+        n_workers=10,               
+        threads_per_worker=1,
+        memory_limit='11GB'
+    )
+    client = Client(cluster)
+    print(f"Dashboard link: {client.dashboard_link}")
+
+    polygons_gdf = gpd.read_file("~/work/projects/PalaeoTides/gbr_connectivity/scripts/GBR_names_reprojected.shp")
+    poly_geoms_future = client.scatter(polygons_gdf.geometry.values, broadcast=True)
+    poly_ids_future   = client.scatter(polygons_gdf.index.values, broadcast=True)
+
+    proc_stores = sorted(glob(os.path.join(dataset_dir, 'proc*.zarr')))
+    if not proc_stores:
+        proc_stores = [dataset_dir]
+
+    print(f"Processing {len(proc_stores)} MPI processor stores...")
+
+    meta_df = pd.DataFrame({
         'trajectory': pd.Series(dtype='int64'),
-        'polygon_id': pd.Series(dtype='int64'), # or int, depending on your ID
-        'time': pd.Series(dtype='timedelta64[ns]')
+        'polygon_id': pd.Series(dtype='int64'), 
+        'time': pd.Series(dtype='timedelta64[s]')
     })
 
-    final_ddf = dd.from_delayed(results, meta=meta_df)
+    for idx, proc_path in enumerate(proc_stores):
+        print(f"[{idx+1}/{len(proc_stores)}] Submitting {os.path.basename(proc_path)}...")
+        
+        root = zarr.open(proc_path, mode='r')
+        n_obs = root['lat'].shape[1] 
+        proc_name = os.path.basename(proc_path).replace('.zarr', '')
+        
+        BATCH_SIZE = 100
+        for start_t in range(0, n_obs, BATCH_SIZE):
+            end_t = min(start_t + BATCH_SIZE, n_obs)
+            
+            results = []
+            for t_idx in range(start_t, end_t):
+                res = delayed(process_time_step)(
+                    proc_path, 
+                    t_idx,
+                    poly_geoms_future,
+                    poly_ids_future
+                )
+                results.append(res)
 
-    # Write to Parquet (Parallel write)
-    # This will trigger the actual computation on the cluster
-    final_ddf.to_parquet(output_file, engine='pyarrow')
+            file_ddf = dd.from_delayed(results, meta=meta_df)
+            
+            # Write to a completely isolated sub-directory per batch.
+            # This perfectly avoids all Dask append/metadata mismatch bugs.
+            batch_dir = os.path.join(output_dir, f"{proc_name}_batch_{start_t}")
+            
+            file_ddf.to_parquet(
+                batch_dir, 
+                engine='pyarrow', 
+                write_index=False
+            )
+            
+            del results, file_ddf
+            gc.collect()
+            
+        print(f"Finished {os.path.basename(proc_path)}")
 
-    print("Done.")
+    print("Pipeline completed successfully!")
