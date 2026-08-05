@@ -1,6 +1,22 @@
+#!/usr/bin/env python3
+"""
+This script creates the connectivity matrix from
+the connections. 
+
+Outputs CSV files and a PDF for visualisation.
+
+@author: jhill1; https://github.com/jhill1
+"""
+#
+# This work is licensed under a Creative Commons Attribution 4.0 International License.
+#
+# To view a copy of this license, visit creativecommons.org or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#
+# Copyright University of York 2026
 import os
 import duckdb
-import geopandas as gpd 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,13 +30,13 @@ TEMP_STARTS_DIR = '../../../modern_0.5km_high_diff/temp_starts'
 TEMP_HITS_DIR = '../../../modern_0.5km_high_diff/temp_hits'
 
 if __name__ == "__main__":
-    
+
     print("Initializing DuckDB Out-of-Core Engine...")
-    
+
     # Create a database file on disk so DuckDB can safely spill over RAM limits without crashing
     con = duckdb.connect('gbr_processing.db')
-    
-    # Tell DuckDB it has a hard limit, keeping your system safe
+
+    # Tell DuckDB it has a hard limit, keeping your system safe. Adjust.
     con.execute("PRAGMA memory_limit='100GB'")
     # Utilize multiple CPU cores for reading the 34k files
     con.execute("PRAGMA threads=8")
@@ -39,7 +55,7 @@ if __name__ == "__main__":
     print(f"Starts extracted: {len(result_df)} unique trajectories.")
 
     # --- 2. Process Hits ---
-    print(f"Extracting first hits from 34,000+ files (This may take a few minutes, but it won't crash)...")
+    print("Extracting first hits from temp files (This may take a few minutes...)")
     # This query sorts by time on the fly and extracts the earliest hit per trajectory
     hits_query = f"""
         SELECT trajectory, polygon_id FROM (
@@ -50,7 +66,7 @@ if __name__ == "__main__":
     """
     local_df = con.execute(hits_query).df()
     print(f"Hits extracted: {len(local_df)} valid connections.")
-    
+
     # Close connection and clean up the database file
     con.close()
     if os.path.exists('gbr_processing.db'):
@@ -64,7 +80,7 @@ if __name__ == "__main__":
         polys, left_on='polygon_id', right_index=True, how='left'
     )
     joined_start = merged_df[['trajectory','LOC_NAME_S','SECTOR','Y_COORD']]
-    start = joined_start.groupby('LOC_NAME_S', sort=False)['trajectory'].agg(list).to_dict() 
+    start = joined_start.groupby('LOC_NAME_S', sort=False)['trajectory'].agg(list).to_dict()
     del merged_df, result_df
 
     joined_end = local_df.merge(
@@ -88,28 +104,28 @@ if __name__ == "__main__":
 
     matrix = np.zeros((len(polys), len(polys)))
     matrix_dec = np.zeros((len(polys), len(polys)))
-    
+
     for reef_name in start.keys():
-        start_reef_idx = poly_to_idx[reef_name]  
+        start_reef_idx = poly_to_idx[reef_name]
         start_ids = joined_start[joined_start["LOC_NAME_S"] == reef_name]["trajectory"].to_numpy()
         end_reefs = joined_end[joined_end['trajectory'].isin(start_ids)]
         end_count = end_reefs.groupby("LOC_NAME_S").size()
-        
+
         for end_key in end_count.keys():
             matrix[start_reef_idx, poly_to_idx[end_key]] = end_count[end_key]
             matrix_dec[start_reef_idx, poly_to_idx[end_key]] = end_count[end_key] / len(start_ids)
 
     column_names = polys["LOC_NAME_S"]
     row_names = polys["LOC_NAME_S"]
-    
+
     pd.DataFrame(matrix, index=row_names, columns=column_names).to_csv(raw_matrix_csv)
-    
+
     matrix_dec = matrix_dec.round(6)
     pd.DataFrame(matrix_dec, index=row_names, columns=column_names).to_csv(decimal_matrix)
 
     # --- 4. Plotting ---
     print("Generating plot...")
-    matrix_dec[matrix_dec == 0] = 1e-9    
+    matrix_dec[matrix_dec == 0] = 1e-9
     connectivity_log = np.log10(matrix_dec)
 
     sectors_pretty = [x.replace("_", " ") for x in sectors]
@@ -119,19 +135,19 @@ if __name__ == "__main__":
     plt.grid()
     cb = plt.colorbar()
     cb.ax.set_ylabel('Connectivity', size=14)
-    
+
     midpoints = []
     major = [0]
     for values in start_end_values:
         midpoints.append(values[0] + (values[1] - values[0]) / 2)
         major.append(values[1])
-        
+
     a.xaxis.set_major_formatter(ticker.NullFormatter())
     a.xaxis.set_major_locator(ticker.FixedLocator(major))
     a.xaxis.set_minor_locator(ticker.FixedLocator(midpoints))
     a.xaxis.set_minor_formatter(ticker.FixedFormatter(sectors_pretty))
     a.tick_params('both', length=10, width=2, which='major')
-    a.xaxis.set_label_position('top') 
+    a.xaxis.set_label_position('top')
     a.tick_params("x", rotation=90, which="minor")
 
     a.yaxis.set_major_locator(ticker.FixedLocator(major))
@@ -141,5 +157,5 @@ if __name__ == "__main__":
     plt.ylabel('Source Reefs', size=14)
     plt.xlabel('Sink Reefs', size=14)
     plt.savefig(output_graphic, bbox_inches='tight')
-    
-    print("Pipeline complete. You conquered the memory limit.")
+
+    print("Pipeline complete.")
