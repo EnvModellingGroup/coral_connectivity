@@ -3,16 +3,20 @@ https://github.com/EnvModellingGroup/tidal_model_template
 
 There are several scripts for this work, which are:
 create_ocean_parcels_vel.sh
+generate_start_positions.py
 ocean_parcels_connectivity.py
-calc_start_end.py
-con_matrix_logged.py
+calc_intersections.py
+create_connections.py
+create_connectivity_matrix.py
 
 They should be run in that order. 
 
 create_ocean_parcels_vel.sh <- creates the netcdf rasters from h5 files from thetis output. Set resolution etc.
-ocean_parcels_connectivity.py <- runs the parcels code and generates trajectories
-calc_start_end.py <- calculates intersection points with the reef polygon file. Each intersection is stored.
-con_matrix_logged.py <- create the connectivity matrix using data from Randall et al and an expoential death model. Run once per species.
+generate_starts_positions.py <- write 2 CSV files for all starting positions. Ensures determinisitic particle runs
+ocean_parcels_connectivity.py <- runs the parcels code and generates trajectories. Run in parallel, even if just 2 cores or the rest may not work!
+calc_intersections <- calculates intersection points with the reef polygon file. Each intersection is stored.
+create_connections <- create the connectivity bones of a connectivity matric based on a competancy curve for a coral species using data from Randall et al and an expoential death model. Run once per species.
+create_connectivity_matrix.py <- make the connectivity matrix from the connections.
 
 You then have a connectivity matrix (or two, or three...) for each species of coral across the whole GBR.
 
