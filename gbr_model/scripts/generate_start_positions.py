@@ -5,8 +5,8 @@ from shapely.geometry import Point, MultiPoint
 import random
 import time
 
-shp_file = "GBR_names_reprojected_9km.shp"
-particles_per_km2 = 1024
+shp_file = "../../data/GBR_names_reprojected_9km.shp"
+particles_per_km2 = 4048
 
 def generate_random_vectorized(number, polygon):
     """Generates random points within a polygon using vectorized NumPy operations."""
@@ -82,8 +82,8 @@ def main():
             print(f"Processed {idx}/{len(gdf)} features...")
 
     print("Saving text coordinates...")
-    np.savetxt("x_points_9km.csv", all_points_x)
-    np.savetxt("y_points_9km.csv", all_points_y)
+    np.savetxt("x_points_high_9km.csv", all_points_x)
+    np.savetxt("y_points_high_9km.csv", all_points_y)
     
     end_time = time.time()
     print(f"Finished! Generated {len(all_points_x)} points in {end_time - start_time:.2f} seconds.")
