@@ -65,7 +65,28 @@ for region, filename in locations.items():
 
     # Read and process the adjacency matrix
     adjacency_matrix = read_adjacency_matrix(filename)
-    G = create_adjacency_matrix_graph(adjacency_matrix.to_numpy())
+
+    # --- Self-Directed Edge Statistics ---
+    adj_mat = adjacency_matrix.to_numpy()
+    num_self_directed = int(np.count_nonzero(np.diag(adj_mat)))
+    total_edges = int(np.count_nonzero(adj_mat))
+    num_non_self_directed = total_edges - num_self_directed
+    
+    prop_self_of_total = num_self_directed / total_edges if total_edges > 0 else 0.0
+    prop_non_self_of_total = num_non_self_directed / total_edges if total_edges > 0 else 0.0
+    ratio_self_vs_nonself = num_self_directed / num_non_self_directed if num_non_self_directed > 0 else np.nan
+
+    print(f"\n--- Edge Analysis: {region} ---")
+    print(f"Total Edges:                     {total_edges}")
+    print(f"Self-Directed Edges:              {num_self_directed}")
+    print(f"Non-Self-Directed Edges:          {num_non_self_directed}")
+    print(f"Self-Directed % of Total:         {prop_self_of_total * 100:.2f}%")
+    print(f"Non-Self-Directed % of Total:     {prop_non_self_of_total * 100:.2f}%")
+    print(f"Self vs Non-Self Proportion:     {ratio_self_vs_nonself:.4f} ({num_self_directed}:{num_non_self_directed})")
+    print("-" * 35 + "\n")
+    # -------------------------------------
+
+    G = create_adjacency_matrix_graph(adj_mat)
     metrics_df = compute_network_metrics(G,weights=True)
     metrics_df = metrics_df.set_index(adjacency_matrix.index)
     coords = pd.read_csv(os.path.join("../data/",region+"_coords.csv"),index_col=0,header=0)
