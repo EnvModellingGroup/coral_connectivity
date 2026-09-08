@@ -34,7 +34,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import scikit_posthocs as sp
 from coral_network_analysis_setup import *
 
-
+use_weights = False
 sns.set_style("ticks")
 # --- Apply Nature-style defaults ---
 matplotlib.style.use("seaborn-v0_8-ticks")
@@ -66,7 +66,7 @@ for region, filename in locations.items():
     # Read and process the adjacency matrix
     adjacency_matrix = read_adjacency_matrix(filename)
     G = create_adjacency_matrix_graph(adjacency_matrix.to_numpy())
-    metrics_df = compute_network_metrics(G,weights=True)
+    metrics_df = compute_network_metrics(G,weights=use_weights)
     metrics_df = metrics_df.set_index(adjacency_matrix.index)
     coords = pd.read_csv(os.path.join("../data/",region+"_coords.csv"),index_col=0,header=0)
     metrics_df = metrics_df.join(coords)
@@ -207,6 +207,8 @@ normality_df.to_csv("normality_results.csv", index=False)  # uncomment if you wa
 
 # Boxplot 1: GBR, IO, Caribbean
 regions_of_interest = ["GBR", "IO", "Caribbean"]
+#regions_of_interest = ["GBR_0.5", "GBR_2", "GBR_9"]
+
 df_long_interest = df_long[df_long["Region"].isin(regions_of_interest)]
 
 # Create the figure
@@ -222,9 +224,10 @@ g = sns.catplot(
     y="Standardised Value",
     col="Metric",
     order=["GBR", "IO", "Caribbean"],
+#    order=["GBR_0.5", "GBR_2", "GBR_9"],
     kind="violin",
     height=1.6,
-    col_wrap=2,
+    col_wrap=3,
     hue="Region",
     linewidth=0.1,
     palette=palette,
@@ -319,7 +322,8 @@ plt.close()
 ############################################
 
 # Define testable metrics for comparison
-comparison_metrics = ["Degree Centrality", "Closeness Centrality", "Betweenness Centrality",
+comparison_metrics = [
+    "Degree Centrality", "Closeness Centrality", "Betweenness Centrality",
     "Eigenvector Centrality", "Harmonic Centrality", "Clustering Coefficient",
 ]
 ANOVA_KruskallWallis_results = []
@@ -348,27 +352,48 @@ for metric in comparison_metrics:
         if any(result['Metric'] == metric and result['Region'] == region and result['p-value'] >= 0.05 for result in normality_results)
     ]
 
+    # Calculate sample size parameters needed for effect sizes
+    k = len(unique_regions)
+    N = sum(len(group) for group in data_by_region)
+
     if all(region in normal_regions for region in unique_regions):
         # All regions are normal, apply ANOVA
         stat, p = stats.f_oneway(*data_by_region)
         test_used = "ANOVA"
+        
+        # Effect sizes initialized as None for ANOVA (or insert ANOVA Eta-Squared here)
+        eta_sq_h = None
+        epsilon_sq = None
+        print(f"{test_used} test: statistic={stat:.3f}, p={p:.3f}")
+        
     else:
         # At least one region is non-normal, apply Kruskal-Wallis
         stat, p = stats.kruskal(*data_by_region)
         test_used = "Kruskal-Wallis"
+        
+        # Calculate Kruskal-Wallis Effect Sizes
+        # 1. Bias-Corrected Eta-Squared: (H - k + 1) / (N - k)
+        eta_sq_h = max(0.0, (stat - k + 1) / (N - k))  # Clamp to 0 if negative
+        
+        # 2. Epsilon-Squared: H / (N - 1)
+        epsilon_sq = stat / (N - 1)
+        
+        print(f"{test_used} test: statistic={stat:.3f}, p={p:.3f}")
+        print(f"  Effect sizes -> Eta-Squared (H): {eta_sq_h:.4f}, Epsilon-Squared: {epsilon_sq:.4f}")
 
-    print(f"{test_used} test: statistic={stat:.3f}, p={p:.3f}")
     if p < 0.05:
         print(f"    Significant difference found in {metric}")
     else:
         print(f"    No significant difference found in {metric}")
 
-    # Store main test entry including region means and medians
+    # Store main test entry including region means, medians, and effect sizes
     main_result_entry = {
         "Metric": metric,
         "Test": test_used,
         "Statistic": stat,
         "p-value": p,
+        "Eta-Squared": eta_sq_h,
+        "Epsilon-Squared": epsilon_sq,
         "Significant difference": "Yes" if p < 0.05 else "No"
     }
     # Append region-specific summary statistics to main test dictionary
@@ -377,7 +402,7 @@ for metric in comparison_metrics:
 
     # If significant, perform post-hoc test
     if p < 0.05:
-        # Prepare a combined dataframe for post-hocs just to be safe and clean
+        # Prepare a combined dataframe for post-hocs
         all_data = pd.concat([df_all[df_all["Region"] == region][["Region", metric]] for region in unique_regions]).dropna()
 
         # ------------------- FOR ANOVA -------------------
@@ -395,18 +420,20 @@ for metric in comparison_metrics:
                     "Pairwise Comparison": f"{row[0]} vs {row[1]}",
                     "Statistic": row[2],  # Mean Difference
                     "p-value": row[3],    # Adjusted p-value
+                    "Eta-Squared": None,
+                    "Epsilon-Squared": None,
                     "Significant difference": "Yes" if row[3] < 0.05 else "No"
-                    })
+                })
 
         # -------------- FOR KRUSKAL-WALLIS --------------
         elif test_used == "Kruskal-Wallis":
-            # Perform Dunn's test with p-value correction (e.g., Bonferroni or Holm)
+            # Perform Dunn's test with p-value correction (Holm-Bonferroni)
             dunn_p_values = sp.posthoc_dunn(all_data, val_col=metric,
                                             group_col='Region', p_adjust='holm')
             print("\nPost-hoc Dunn's test p-values:")
             print(dunn_p_values)
 
-            # Unpack the symmetric square matrix from Dunn's test to store in results
+            # Unpack the symmetric square matrix from Dunn's test
             regions = list(dunn_p_values.columns)
             for i in range(len(regions)):
                 # Only take the upper triangle to avoid duplicates
@@ -419,9 +446,10 @@ for metric in comparison_metrics:
                         "Metric": metric,
                         "Test": "Dunn's test",
                         "Pairwise Comparison": f"{region_a} vs {region_b}",
-                        # Dunn's test natively outputs the p-value matrix directly in scikit-posthocs
                         "Statistic": None,
                         "p-value": p_val,
+                        "Eta-Squared": None,
+                        "Epsilon-Squared": None,
                         "Significant difference": "Yes" if p_val < 0.05 else "No"
                     })
 
@@ -511,7 +539,7 @@ plt.close()
 
 # Silhouette Method
 sil_scores = []  # List to store silhouette scores for each k
-for k in range(1, 11):  # Check for k from 2 to 10 clusters
+for k in range(2, 11):  # Check for k from 2 to 10 clusters
     kmeans = KMeans(n_clusters=k, random_state=42)
     cluster_labels = kmeans.fit_predict(scaled_data)
     sil_score = silhouette_score(scaled_data, cluster_labels)
@@ -519,7 +547,7 @@ for k in range(1, 11):  # Check for k from 2 to 10 clusters
 
 # Plot the silhouette scores
 plt.figure(figsize=(1.0, 1.0))
-plt.plot(range(1, 11), sil_scores, marker='o', linestyle='--', ms=1)
+plt.plot(range(2, 11), sil_scores, marker='o', linestyle='--', ms=1)
 plt.xlabel('Number of Clusters')
 plt.ylabel('Silhouette Score')
 sns.despine()
@@ -535,12 +563,16 @@ reduced_data = pca.fit_transform(scaled_data)
 linkage_matrix = linkage(reduced_data, method='ward')
 
 # Assign clusters
-num_clusters = 2  # Adjust as needed
+num_clusters = 3  # Adjust as needed
 cluster_labels = fcluster(linkage_matrix, t=num_clusters, criterion='maxclust')
 
 # 2. Define distinct colors and SWAP Cluster 1 & Cluster 2
 palette = sns.color_palette("husl", num_clusters)
-palette[0], palette[1] = palette[1], palette[0]
+palette_copy = sns.color_palette("husl", num_clusters)
+palette[2] = palette_copy[1]
+palette[1] = palette_copy[2]
+palette[0] = palette_copy[0]
+#palette[0], palette[1] = palette[1], palette[0]
 
 # 3. Map regions to markers
 region_markers = {
@@ -548,6 +580,12 @@ region_markers = {
     'IO': '^',
     'Caribbean': 'X'
 }
+#region_markers = {
+#    'GBR_05': '.',
+#    'GBR_2': '^',
+#    'GBR_9': 'X'
+#}
+
 
 # 4. Add data to the dataframe
 # Align cluster labels back to the non-NA dataset index
@@ -691,3 +729,69 @@ plt.xticks(rotation=45, ha='right')
 plt.savefig("Metric_Cor_Spearman.pdf",dpi=300)
 #plt.show()
 plt.close()
+
+
+#######################################################
+###### INFLOW AND OUTFLOW PROBABILITY CALCULATIONS ######
+#######################################################
+
+print("\nCalculating inflow and outflow probabilities (excluding self-loops)...")
+
+flow_prob_results = []
+
+for region, filename in locations.items():
+    # Read the adjacency matrix
+    adj_df = read_adjacency_matrix(filename)
+    nodes = adj_df.index
+    adj_matrix = adj_df.to_numpy(dtype=float).copy()
+
+    # Exclude self-loops by zeroing the diagonal
+    np.fill_diagonal(adj_matrix, 0.0)
+
+    # Check if graph/matrix is weighted (non-binary non-zero entries or float weights)
+    # If unweighted, default to 1 for all edges (count number of edges)
+    unique_vals = np.unique(adj_matrix[adj_matrix > 0])
+    is_weighted = not (len(unique_vals) <= 1 and (len(unique_vals) == 0 or unique_vals[0] == 1))
+
+    if not is_weighted:
+        # Binarize to count edges directly
+        adj_matrix = (adj_matrix > 0).astype(float)
+
+    # 1. Outflow Probabilities (Row-normalization without self-loops)
+    # Sum of outgoing weights/edges per node excluding self-loops
+    out_strength = adj_matrix.sum(axis=1)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        outflow_prob_matrix = np.where(out_strength[:, None] > 0, adj_matrix / out_strength[:, None], 0.0)
+
+    # 2. Inflow Probabilities (Column-normalization without self-loops)
+    # Sum of incoming weights/edges per node excluding self-loops
+    in_strength = adj_matrix.sum(axis=0)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        inflow_prob_matrix = np.where(in_strength[None, :] > 0, adj_matrix / in_strength[None, :], 0.0)
+
+    # 3. Calculate per-node aggregate summary metrics
+    # Node average outgoing probability per connected neighbor (excluding self)
+    row_nonzero_counts = np.count_nonzero(adj_matrix, axis=1)
+    avg_outflow_prob = np.where(row_nonzero_counts > 0, outflow_prob_matrix.sum(axis=1) / row_nonzero_counts, 0.0)
+
+    # Node average incoming probability per connected neighbor (excluding self)
+    col_nonzero_counts = np.count_nonzero(adj_matrix, axis=0)
+    avg_inflow_prob = np.where(col_nonzero_counts > 0, inflow_prob_matrix.sum(axis=0) / col_nonzero_counts, 0.0)
+
+    # Build node DataFrame for this region
+    region_flow_df = pd.DataFrame({
+        "Node": nodes,
+        "Region": region,
+        "Is_Weighted": is_weighted,
+        "Total_Out_Degree_or_Weight_excl_loops": out_strength,
+        "Total_In_Degree_or_Weight_excl_loops": in_strength,
+        "Avg_Outflow_Probability_excl_loops": avg_outflow_prob,
+        "Avg_Inflow_Probability_excl_loops": avg_inflow_prob
+    })
+
+    flow_prob_results.append(region_flow_df)
+
+# Combine and save node probability statistics to CSV
+df_flow_probabilities = pd.concat(flow_prob_results, ignore_index=True)
+df_flow_probabilities.to_csv("inflow_outflow_probabilities_no_loops.csv", index=False)
+print("Saved flow probabilities (excluding self-loops) to 'inflow_outflow_probabilities_no_loops.csv'")
